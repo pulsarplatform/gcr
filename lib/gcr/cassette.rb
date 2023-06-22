@@ -81,10 +81,23 @@ class GCR::Cassette
       alias_method :orig_request_response, :request_response
 
       def request_response(*args)
-        orig_request_response(*args).tap do |resp|
+        orig_request_response(*args.slice(0..-2), **args.last).tap do |resp|
           req = GCR::Request.from_proto(*args)
           if GCR.cassette.reqs.none? { |r, _| r == req }
-            GCR.cassette.reqs << [req, GCR::Response.from_proto(resp)]
+
+            # check if our request wants an operation returned rather than the response
+            if args.last[:return_op] == true
+              # if so, collect the original operation
+              operation = resp
+              result = operation.execute
+
+              # hack the execute method to return the response we recorded
+              resp.define_singleton_method(:execute) { return result }
+
+              GCR.cassette.reqs << [req, GCR::Response.from_proto(result)]
+            else
+              GCR.cassette.reqs << [req, GCR::Response.from_proto(resp)]
+            end
           end
         end
       end
@@ -107,9 +120,24 @@ class GCR::Cassette
       def request_response(*args)
         req = GCR::Request.from_proto(*args)
         GCR.cassette.reqs.each do |other_req, resp|
-          return resp.to_proto if req == other_req
+          # return resp.to_proto if req == other_req
+          next if req != other_req
+
+          # check if our request wants an operation returned rather than the response
+          if args.last[:return_op] == true
+            # if so, collect the original operation
+            operation = orig_request_response(*args.slice(0..-2), **args.last)
+
+            # hack the execute method to return the response we recorded
+            operation.define_singleton_method(:execute) { return resp.to_proto }
+
+            # then return it
+            return operation
+          end
+
+          # otherwise just return the response
+          return resp.to_proto
         end
-        raise GCR::NoRecording
       end
     end
   end
