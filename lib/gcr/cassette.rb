@@ -77,7 +77,7 @@ class GCR::Cassette
   end
 
   def start_recording
-    GCR.stub.class.class_eval do
+    GCR.stub.class_eval do
       alias_method :orig_request_response, :request_response
 
       def request_response(*args)
@@ -105,7 +105,7 @@ class GCR::Cassette
   end
 
   def stop_recording
-    GCR.stub.class.class_eval do
+    GCR.stub.class_eval do
       alias_method :request_response, :orig_request_response
     end
     save
@@ -114,7 +114,7 @@ class GCR::Cassette
   def start_playing
     load
 
-    GCR.stub.class.class_eval do
+    GCR.stub.class_eval do
       alias_method :orig_request_response, :request_response
 
       def request_response(*args)
@@ -143,7 +143,7 @@ class GCR::Cassette
   end
 
   def stop_playing
-    GCR.stub.class.class_eval do
+    GCR.stub.class_eval do
       alias_method :request_response, :orig_request_response
     end
   end
