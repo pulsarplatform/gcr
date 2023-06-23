@@ -5,6 +5,7 @@ module GCR
   ConfigError = Class.new(Error)
   RunningError = Class.new(Error)
   NoRecording = Class.new(Error)
+  NoCassette = Class.new(Error)
 
   # Ignore these fields when matching requests.
   #
@@ -39,6 +40,11 @@ module GCR
     @cassette_dir || (raise ConfigError, "no cassette dir configured")
   end
 
+  def reset_stubs
+    @stub = nil
+    @stubs = nil
+  end
+
   # Specify the stub to intercept calls to.
   #
   # stub - A GRPC::ClientStub instance.
@@ -47,6 +53,7 @@ module GCR
   def stub=(stub)
     raise RunningError, "cannot configure GCR within #with_cassette block" if @running
     @stub = stub
+    (@stubs ||= Set.new) << stub
   end
 
   # The stub that is being mocked.
@@ -56,6 +63,11 @@ module GCR
     @stub || (raise ConfigError, "no stub configured")
   end
 
+  def stubs
+    @stubs || (raise ConfigError, "no stubs configured")
+    @stubs.to_a
+  end
+  
   def insert(name)
     @cassette = Cassette.new(name)
     if @cassette.exist?

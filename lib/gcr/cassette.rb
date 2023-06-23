@@ -77,10 +77,55 @@ class GCR::Cassette
   end
 
   def start_recording
-    GCR.stub.class_eval do
+    GCR.stubs.each do |stub|
+      _start_recording(stub)
+    end
+  end
+
+  def stop_recording
+    GCR.stubs.each do |stub|
+      _stop_recording(stub)
+    end
+    save
+  end
+
+  def start_playing
+    load
+
+    GCR.stubs.each do |stub|
+      _start_playing(stub)
+    end
+  end
+
+  def stop_playing
+    GCR.stubs.each do |stub|
+      _stop_playing(stub)
+    end
+  end
+
+  def [](req)
+    reqs.find { |r| r == req }
+  end
+
+  def []=(req, resp)
+    reqs << [req, resp]
+  end
+
+  private
+
+  def already_intercepted?(instance)
+    instance.respond_to?(:orig_request_response)
+  end
+
+  def _start_recording(stub)
+    return if already_intercepted?(stub)
+
+    stub.class_eval do
       alias_method :orig_request_response, :request_response
 
       def request_response(*args)
+        raise GCR::NoCassette unless GCR.cassette
+
         orig_request_response(*args.slice(0..-2), **args.last).tap do |resp|
           req = GCR::Request.from_proto(*args)
           if GCR.cassette.reqs.none? { |r, _| r == req }
@@ -104,17 +149,18 @@ class GCR::Cassette
     end
   end
 
-  def stop_recording
-    GCR.stub.class_eval do
+  def _stop_recording(stub)
+    return unless already_intercepted?(stub)
+
+    stub.class_eval do
       alias_method :request_response, :orig_request_response
     end
-    save
   end
 
-  def start_playing
-    load
+  def _start_playing(stub)
+    return if already_intercepted?(stub)
 
-    GCR.stub.class_eval do
+    stub.class_eval do
       alias_method :orig_request_response, :request_response
 
       def request_response(*args)
@@ -142,17 +188,11 @@ class GCR::Cassette
     end
   end
 
-  def stop_playing
-    GCR.stub.class_eval do
+  def _stop_playing(stub)
+    return unless already_intercepted?(stub)
+
+    stub.class_eval do
       alias_method :request_response, :orig_request_response
     end
-  end
-
-  def [](req)
-    reqs.find { |r| r == req }
-  end
-
-  def []=(req, resp)
-    reqs << [req, resp]
   end
 end
