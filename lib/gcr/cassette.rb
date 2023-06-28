@@ -114,7 +114,7 @@ class GCR::Cassette
   private
 
   def already_intercepted?(instance)
-    instance.respond_to?(:orig_request_response)
+    instance.method_defined?(:orig_request_response)
   end
 
   def _start_recording(stub)
