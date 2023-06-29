@@ -31,6 +31,10 @@ class GCR::Request
     JSON.dump("route" => route, "class_name" => class_name, "body" => body)
   end
 
+  def to_s
+    to_json
+  end
+
   def to_proto
     [route, Object.const_get(class_name).decode_json(body)]
   end
