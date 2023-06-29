@@ -51,6 +51,7 @@ class GCR::Cassette
     File.open(@path, "w") do |f|
       f.write(JSON.pretty_generate(
         "version" => VERSION,
+        "recorded_at" => Time.now,
         "reqs"    => reqs,
       ))
     end
