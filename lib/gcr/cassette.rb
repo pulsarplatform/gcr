@@ -128,22 +128,25 @@ class GCR::Cassette
 
         orig_request_response(*args.slice(0..-2), **args.last).tap do |resp|
           req = GCR::Request.from_proto(*args)
-          if GCR.cassette.reqs.none? { |r, _| r == req }
 
-            # check if our request wants an operation returned rather than the response
-            if args.last[:return_op] == true
-              # if so, collect the original operation
-              operation = resp
-              result = operation.execute
+          return resp unless GCR.cassette.reqs.none? { |recorded_req, _| recorded_req == req }
 
-              # hack the execute method to return the response we recorded
-              resp.define_singleton_method(:execute) { return result }
+          # check if our request wants an operation returned rather than the response
+          if args.last[:return_op] == true
+            # if so, collect the original operation
+            operation = resp
+            result = operation.execute
 
-              GCR.cassette.reqs << [req, GCR::Response.from_proto(result)]
-            else
-              GCR.cassette.reqs << [req, GCR::Response.from_proto(resp)]
-            end
+            # hack the execute method to return the response we recorded
+            resp.define_singleton_method(:execute) { return result }
+
+            # GCR::Response.from_proto(operation)
+            GCR.cassette.reqs << [req, GCR::Response.from_proto(result)]
+          else
+            GCR.cassette.reqs << [req, GCR::Response.from_proto(resp)]
           end
+          
+          resp
         end
       end
     end
@@ -165,25 +168,26 @@ class GCR::Cassette
 
       def request_response(*args)
         req = GCR::Request.from_proto(*args)
-        GCR.cassette.reqs.each do |other_req, resp|
-          # return resp.to_proto if req == other_req
-          next if req != other_req
+        record = GCR.cassette.reqs.detect { |recorded_req, _| recorded_req == req }
 
-          # check if our request wants an operation returned rather than the response
-          if args.last[:return_op] == true
-            # if so, collect the original operation
-            operation = orig_request_response(*args.slice(0..-2), **args.last)
+        raise GCR::NoRecording, "No recording found for #{req}" unless record
 
-            # hack the execute method to return the response we recorded
-            operation.define_singleton_method(:execute) { return resp.to_proto }
+        recorded_req, resp = record
 
-            # then return it
-            return operation
-          end
+        # check if our request wants an operation returned rather than the response
+        if args.last[:return_op] == true
+          # if so, collect the original operation
+          operation = orig_request_response(*args.slice(0..-2), **args.last)
 
-          # otherwise just return the response
-          return resp.to_proto
+          # hack the execute method to return the response we recorded
+          operation.define_singleton_method(:execute) { return resp.to_proto }
+
+          # then return it
+          return operation
         end
+
+        # otherwise just return the response
+        return resp.to_proto
       end
     end
   end

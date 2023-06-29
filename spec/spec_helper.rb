@@ -21,7 +21,8 @@ RSpec.configure do |config|
   config.before(:each) do
     Greetings::Server.start unless Greetings::Server.running?
     GCR.cassette_dir = TMP_DIR
-    GCR.stub = Greetings::Client.stub
+    GCR.reset_stubs
+    GCR.stub = Greetings::Service::Stub
     GCR::Cassette.delete_all
   end
 end
