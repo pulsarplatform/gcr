@@ -124,11 +124,11 @@ class GCR::Cassette
     stub.class_eval do
       alias_method :orig_request_response, :request_response
 
-      def request_response(*args)
+      def request_response(*args, **kwargs)
         raise GCR::NoCassette unless GCR.cassette
 
-        orig_request_response(*args.slice(0..-2), **args.last).tap do |resp|
-          req = GCR::Request.from_proto(*args)
+        orig_request_response(*args), **kwargs).tap do |resp|
+          req = GCR::Request.from_proto(*args, **kwargs)
 
           return resp unless GCR.cassette.reqs.none? { |recorded_req, _| recorded_req == req }
 
@@ -158,6 +158,8 @@ class GCR::Cassette
 
     stub.class_eval do
       alias_method :request_response, :orig_request_response
+
+      remove_method :orig_request_response
     end
   end
 
@@ -167,8 +169,8 @@ class GCR::Cassette
     stub.class_eval do
       alias_method :orig_request_response, :request_response
 
-      def request_response(*args)
-        req = GCR::Request.from_proto(*args)
+      def request_response(*args, **kwargs)
+        req = GCR::Request.from_proto(*args, **kwargs)
         record = GCR.cassette.reqs.detect { |recorded_req, _| recorded_req == req }
 
         raise GCR::NoRecording, "No recording found for #{req}" unless record
@@ -178,7 +180,7 @@ class GCR::Cassette
         # check if our request wants an operation returned rather than the response
         if args.last[:return_op] == true
           # if so, collect the original operation
-          operation = orig_request_response(*args.slice(0..-2), **args.last)
+          operation = orig_request_response(*args, **kwargs)
 
           # hack the execute method to return the response we recorded
           operation.define_singleton_method(:execute) { return resp.to_proto }
@@ -198,6 +200,8 @@ class GCR::Cassette
 
     stub.class_eval do
       alias_method :request_response, :orig_request_response
+
+      remove_method :orig_request_response
     end
   end
 end
