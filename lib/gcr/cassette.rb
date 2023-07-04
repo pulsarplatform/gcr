@@ -133,7 +133,7 @@ class GCR::Cassette
           return resp unless GCR.cassette.reqs.none? { |recorded_req, _| recorded_req == req }
 
           # check if our request wants an operation returned rather than the response
-          if args.last[:return_op] == true
+          if kwargs[:return_op] == true
             # if so, collect the original operation
             operation = resp
             result = operation.execute
@@ -178,7 +178,7 @@ class GCR::Cassette
         recorded_req, resp = record
 
         # check if our request wants an operation returned rather than the response
-        if args.last[:return_op] == true
+        if kwargs[:return_op] == true
           # if so, collect the original operation
           operation = orig_request_response(*args, **kwargs)
 
