@@ -127,7 +127,7 @@ class GCR::Cassette
       def request_response(*args, **kwargs)
         raise GCR::NoCassette unless GCR.cassette
 
-        orig_request_response(*args), **kwargs).tap do |resp|
+        orig_request_response(*args, **kwargs).tap do |resp|
           req = GCR::Request.from_proto(*args, **kwargs)
 
           return resp unless GCR.cassette.reqs.none? { |recorded_req, _| recorded_req == req }
